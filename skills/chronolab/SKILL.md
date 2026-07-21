@@ -1,6 +1,6 @@
 ---
 name: chronolab
-description: Control and inspect wall-clock time in dynamically linked glibc Linux Docker applications without changing project source. Use when an agent needs to test subscriptions, expiries, schedulers, cron workers, date-sensitive workflows, Docker Compose services, or Stripe sandbox Test Clocks by setting, advancing, or accelerating application time.
+description: Control and inspect wall-clock time in dynamically linked glibc Linux Docker applications without changing project source. Use when an agent needs to test subscriptions, expiries, schedulers, cron workers, date-sensitive workflows, Docker Compose services, Stripe sandbox Test Clocks, Chargebee test-site Time Machines, or Paddle sandbox lifecycle simulations.
 ---
 
 # Use ChronoLab
@@ -58,6 +58,29 @@ chrono advance 30d --json
 ```
 
 An attached clock advances before local containers restart. Reset is intentionally refused while Stripe is attached.
+
+## Chargebee test sites
+
+Use only an explicit `CHARGEBEE_TEST_SITE` and `CHARGEBEE_API_KEY`. Starting afresh clears customer data on that test site, so run it only with direct user authorization and the required `--confirm` flag.
+
+```bash
+chrono chargebee start --at 2026-01-01T00:00:00Z --confirm --json
+chrono chargebee status --json
+chrono advance 30d --json
+```
+
+An attached Time Machine advances before local containers restart. Reset is intentionally refused while Chargebee is attached.
+
+## Paddle sandbox simulations
+
+Use only `PADDLE_SANDBOX_API_KEY` values containing `_sdbx_`. Paddle simulations model lifecycle events; do not describe them as changing Paddle's clock.
+
+```bash
+chrono paddle simulate subscription_renewal --notification-setting ntfset_123 --json
+chrono paddle status --json
+```
+
+When forwarding webhooks, use `chrono paddle listen --forward-to URL`; ChronoLab preserves body bytes, ordering, and `paddle-signature`.
 
 ## Agent output
 

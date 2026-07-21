@@ -4,7 +4,7 @@ ChronoLab integrates with external providers only when their test environment ex
 
 ## Shipped: Stripe Test Clocks
 
-The Stripe adapter is included in v0.2.0 and supports sandbox Test Clock creation, attachment, status, advancement, detachment, deletion, and ordered webhook buffering.
+The Stripe adapter supports sandbox Test Clock creation, attachment, status, advancement, detachment, deletion, and ordered webhook buffering.
 
 Its automated coverage verifies:
 
@@ -17,27 +17,28 @@ Its automated coverage verifies:
 
 An optional credentialed sandbox smoke test may be added later, but it will remain opt-in because it creates and deletes real objects in a Stripe test account.
 
-## Next: Chargebee Time Machine
+## Shipped: Chargebee Time Machine
 
-Chargebee exposes a Time Machine API on test sites. The planned adapter will:
+The Chargebee adapter uses the `delorean` Time Machine on explicit test sites. It:
 
-1. require a test-site hostname and test API credential;
-2. start afresh or advance the `delorean` Time Machine;
-3. poll `time_travel_status` until `succeeded` or `failed`;
-4. coordinate provider completion before local controlled services restart;
-5. buffer and release Chargebee webhooks using the same byte-preserving contract as Stripe.
+1. requires a test-site name and API credential from the environment;
+2. requires `--confirm` before `start`, because start-afresh clears test customer data;
+3. starts afresh, attaches to, or advances the Time Machine;
+4. polls `time_travel_status` with a bounded timeout;
+5. completes provider travel before local controlled services restart;
+6. refuses local reset while the external clock is attached.
 
-Acceptance requires local contract tests, live-mode refusal, sanitized errors, timeout handling, and an opt-in test-site smoke test.
+Contract tests cover request encoding, credential and site validation, sanitized failures, bounded polling, and provider-before-container ordering. A credentialed test-site smoke test remains opt-in because start-afresh deletes test data.
 
-## Planned: Paddle webhook simulations
+## Shipped: Paddle sandbox simulations
 
-Paddle does not expose an application clock equivalent to Stripe Test Clocks. Its Webhook Simulator can run subscription lifecycle scenarios, including renewals and failed-payment paths. The planned adapter will create and run sandbox simulations, correlate simulation-run events, and route them through ChronoLab's ordered webhook listener.
+Paddle does not expose an application clock equivalent to Stripe Test Clocks. ChronoLab uses Paddle's sandbox simulation API to create and run subscription creation, renewal, pause, resume, and cancellation scenarios. It polls each run to completion, includes the resulting events, and fails when a delivery fails or aborts.
 
-The website and CLI will label this as lifecycle simulation—not wall-clock synchronization.
+The shared webhook listener preserves `paddle-signature`, request bytes, and ordering while local applications advance. Live credentials and live API endpoints are refused. The website and CLI label this as lifecycle simulation—not wall-clock synchronization.
 
-## Research: Recurly sandbox workflows
+## Research: lifecycle and usage-billing providers
 
-ChronoLab will evaluate Recurly's sandbox subscription, invoicing, and dunning surfaces. This remains research until a deterministic provider-side advancement contract can be proven. If no native clock exists, any future adapter will be explicitly scoped to event or lifecycle simulation.
+ChronoLab will evaluate Recurly and Zuora sandbox subscription, invoicing, dunning, and webhook surfaces, plus Orb and Metronome test-mode usage-event and invoice workflows. These remain research until a deterministic contract can be proven. Without a native clock, any future adapter will be explicitly scoped to event or lifecycle simulation.
 
 ## Shared adapter contract
 
@@ -45,11 +46,11 @@ Every provider integration must meet the same release gate:
 
 - test or sandbox credentials only, with recognizable live credentials rejected;
 - secrets read from environment variables and never persisted or printed;
-- provider advancement or simulation completes before local application restart;
+- clock advancement completes before local application restart; standalone lifecycle simulations report only after provider completion;
 - stable JSON status and error codes;
 - bounded polling with clear timeouts;
 - exact webhook payload preservation and ordered release;
 - documented capability boundaries and cleanup behavior;
 - deterministic automated contract tests before the integration is marked shipped.
 
-Provider references: [Chargebee Time Machine](https://apidocs.chargebee.com/docs/api/time_machines), [Paddle Webhook Simulator](https://developer.paddle.com/webhooks/simulator/), and [Recurly sandbox](https://docs.recurly.com/recurly-subscriptions/docs/sandbox-features-to-discover).
+Provider references: [Chargebee Time Machine](https://apidocs.chargebee.com/docs/api/time_machines), [Paddle simulations](https://developer.paddle.com/api-reference/simulations/create-simulation), [Recurly sandbox](https://docs.recurly.com/recurly-subscriptions/docs/sandbox-features-to-discover), [Orb test mode](https://docs.withorb.com/product-catalog/test-mode), and [Metronome sandbox](https://docs.metronome.com/developer-resources/sandbox/).

@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Clock3, Copy, GitFork, PackageOpen, TerminalSquare } from 'lucide-react'
+import { ArrowRight, Check, Copy, GitFork, PackageOpen, TerminalSquare } from 'lucide-react'
 
 const repository = 'https://github.com/AceVikings/chronolab'
 
 const commands = {
-  install: 'npm install -g https://github.com/AceVikings/chronolab/releases/download/v0.2.0/chronolab-0.2.0.tgz',
+  install: 'npm install -g https://github.com/AceVikings/chronolab/releases/download/v0.3.0/chronolab-0.3.0.tgz',
   build: 'chrono build -f Dockerfile -t billing-api:chrono .',
   run: 'chrono run billing-api:chrono --at 2026-01-01T00:00:00Z',
   advance: 'chrono advance 30d',
@@ -16,19 +16,33 @@ const features = [
   { index: '03', name: 'Accelerated application time', tag: 'time', command: 'chrono warp 3600x', description: 'Runs the existing application process against a faster wall clock for timer-driven scenarios. No runtime package, import, or application source change is required.' },
   { index: '04', name: 'Compose orchestration', tag: 'docker', command: 'chrono compose up', description: 'Synchronizes multiple controlled services while passive dependencies such as Postgres and Redis remain running on real server time.' },
   { index: '05', name: 'Stripe Test Clocks', tag: 'provider', command: 'chrono stripe create', description: 'Creates or attaches sandbox clocks, advances Stripe before local services, waits for ready status, and refuses live-mode credentials and objects.' },
-  { index: '06', name: 'Ordered webhook buffering', tag: 'provider', command: 'chrono stripe listen', description: 'Accepts Stripe payloads on localhost, buffers their original bytes during an advance, then forwards them in order after applications are verified.' },
-  { index: '07', name: 'Compatibility doctor', tag: 'diagnostics', command: 'chrono doctor', description: 'Checks wrapper labels, platform, glibc compatibility, and observed realtime behavior. Unsupported images fail loudly with stable diagnostic codes.' },
-  { index: '08', name: 'Agent-ready operations', tag: 'automation', command: 'chrono mcp serve', description: 'Adds stable JSON output, structured event logs, diagnostic exports, and MCP tools for reading, setting, and advancing logical time.' },
-  { index: '09', name: 'Persistent run state', tag: 'state', command: 'chrono events', description: 'Keeps atomic state, clock generations, generated wrappers, Compose overrides, and append-only events under one inspectable .chronolab directory.' },
-  { index: '10', name: 'Scoped safety controls', tag: 'safety', command: 'chrono destroy', description: 'Uses per-run locks and exact Docker labels, never requests CAP_SYS_TIME, retains failure diagnostics, and removes only resources belonging to the selected run.' },
+  { index: '06', name: 'Chargebee Time Machine', tag: 'provider', command: 'chrono chargebee start', description: 'Starts or attaches the delorean Time Machine on an explicit test site, waits for travel to succeed, and advances it before controlled services restart.' },
+  { index: '07', name: 'Paddle simulations', tag: 'provider', command: 'chrono paddle simulate', description: 'Runs sandbox subscription creation, renewal, pause, resume, and cancellation scenarios, then verifies the simulation and event deliveries completed.' },
+  { index: '08', name: 'Ordered webhook buffering', tag: 'provider', command: 'chrono paddle listen', description: 'Preserves original Stripe or Paddle payload bytes and signature headers, buffers requests during an advance, then forwards them in order after verification.' },
+  { index: '09', name: 'Compatibility doctor', tag: 'diagnostics', command: 'chrono doctor', description: 'Checks wrapper labels, platform, glibc compatibility, and observed realtime behavior. Unsupported images fail loudly with stable diagnostic codes.' },
+  { index: '10', name: 'Agent-ready operations', tag: 'automation', command: 'chrono mcp serve', description: 'Adds stable JSON output, structured event logs, diagnostic exports, and MCP tools for reading, setting, and advancing logical time.' },
+  { index: '11', name: 'Persistent run state', tag: 'state', command: 'chrono events', description: 'Keeps atomic state, clock generations, generated wrappers, Compose overrides, and append-only events under one inspectable .chronolab directory.' },
+  { index: '12', name: 'Scoped safety controls', tag: 'safety', command: 'chrono destroy', description: 'Uses per-run locks and exact Docker labels, never requests CAP_SYS_TIME, retains failure diagnostics, and removes only resources belonging to the selected run.' },
 ]
 
 const integrationRoadmap = [
   { provider: 'Stripe', status: 'Shipped + tested', state: 'shipped', surface: 'Test Clocks + webhooks', description: 'Sandbox-only clock creation, attachment, polling, coordinated advancement, deletion, and byte-preserving webhook buffering are covered by automated contract and orchestration tests.' },
-  { provider: 'Chargebee', status: 'Next', state: 'planned', surface: 'Time Machine', description: 'Coordinate test-site Time Machine travel, wait for a terminal status, then restart local controlled services and release buffered Chargebee events.' },
-  { provider: 'Paddle', status: 'Planned', state: 'planned', surface: 'Webhook Simulator', description: 'Run sandbox renewal and failed-payment lifecycle simulations through ChronoLab’s ordered webhook path. This will simulate events, not claim to change Paddle’s clock.' },
-  { provider: 'Recurly', status: 'Research', state: 'research', surface: 'Sandbox lifecycle', description: 'Evaluate subscription, invoice, and dunning test surfaces. It ships only if a deterministic provider contract can be proven and tested.' },
+  { provider: 'Chargebee', status: 'Shipped + tested', state: 'shipped', surface: 'Time Machine', description: 'Test-site-only start, attachment, polling, coordinated travel, destructive setup confirmation, timeout handling, and reset refusal are covered by contract and orchestration tests.' },
+  { provider: 'Paddle', status: 'Shipped + tested', state: 'shipped', surface: 'Simulations + webhooks', description: 'Sandbox lifecycle simulations, run and delivery verification, live-key refusal, and byte- and signature-preserving webhook buffering are tested. It simulates events; it does not claim to change Paddle’s clock.' },
+  { provider: 'Usage billing', status: 'Research', state: 'research', surface: 'Orb + Metronome', description: 'Evaluate test-mode event ingestion and invoice lifecycle surfaces. An adapter will remain event-scoped unless a deterministic provider-side clock contract can be proven.' },
+  { provider: 'Subscription suites', status: 'Research', state: 'research', surface: 'Recurly + Zuora', description: 'Evaluate sandbox renewal, invoice, dunning, and webhook surfaces without implying that provider state can be rolled back.' },
 ]
+
+function LogoGlyph() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 64 64" width="23" height="23">
+      <circle cx="32" cy="32" r="18" fill="none" stroke="currentColor" strokeWidth="4" />
+      <path d="M32 20v12h12" fill="none" stroke="var(--color-ink)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m40 27 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="32" cy="32" r="2.75" fill="currentColor" />
+    </svg>
+  )
+}
 
 function CopyButton({ value, label = 'Copy command' }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false)
@@ -70,7 +84,7 @@ function App() {
       <header className="site-header">
         <div className="page-shell flex h-16 items-center justify-between">
           <a className="brand-link" href="#top" aria-label="ChronoLab home">
-            <span className="brand-mark"><Clock3 aria-hidden="true" size={17} /></span>
+            <span className="brand-mark"><LogoGlyph /></span>
             <span>ChronoLab</span>
           </a>
           <nav className="flex items-center gap-2" aria-label="Primary navigation">
@@ -244,6 +258,8 @@ function App() {
                   <li><Check aria-hidden="true" size={15} /> Single images and Docker Compose</li>
                   <li><Check aria-hidden="true" size={15} /> Deterministic jumps and accelerated time</li>
                   <li><Check aria-hidden="true" size={15} /> Stripe sandbox Test Clocks</li>
+                  <li><Check aria-hidden="true" size={15} /> Chargebee Time Machine coordination</li>
+                  <li><Check aria-hidden="true" size={15} /> Paddle sandbox simulations</li>
                   <li><Check aria-hidden="true" size={15} /> JSON output, events, export, and MCP</li>
                   <li><Check aria-hidden="true" size={15} /> Compatibility doctor and safe cleanup</li>
                 </ul>

@@ -46,6 +46,7 @@ test('listener forwards exact Stripe bytes when ready and buffers them while adv
     assert.equal(forwarded[0].body, '{"id":"evt_ready"}');
     assert.equal(forwarded[0].headers['stripe-signature'], 't=123,v1=test');
     assert.equal(forwarded[0].headers['x-chronolab-run-id'], 'run_listener');
+    assert.equal(forwarded[0].headers['x-chronolab-provider'], 'stripe');
 
     await writeJson(path.join(dir, 'state.json'), { runId: 'run_listener', status: 'advancing' });
     const advancingResponse = await fetch(`http://127.0.0.1:${port}`, { method: 'POST', headers, body: '{"id":"evt_buffered"}' });
@@ -59,4 +60,28 @@ test('listener forwards exact Stripe bytes when ready and buffers them while adv
     if (server?.listening) await new Promise(resolve => server.once('close', resolve));
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('shared buffer preserves Paddle signatures and provider metadata', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'chronolab-paddle-webhooks-'));
+  const seen = [];
+  try {
+    await appendJsonLine(path.join(dir, 'buffered-paddle-webhooks.jsonl'), {
+      provider: 'paddle',
+      headers: { 'content-type': 'application/json', 'paddle-signature': 'ts=123;h1=test' },
+      body: Buffer.from('{"event_type":"subscription.updated"}').toString('base64'),
+    });
+    const count = await releaseBuffered({
+      dir,
+      runId: 'run_paddle',
+      provider: 'paddle',
+      signatureHeader: 'paddle-signature',
+      forwardTo: 'http://paddle.test/webhook',
+      fetchImpl: async (url, options) => { seen.push({ url, options }); return new Response(null, { status: 204 }); },
+    });
+    assert.equal(count, 1);
+    assert.equal(Buffer.from(seen[0].options.body).toString(), '{"event_type":"subscription.updated"}');
+    assert.equal(seen[0].options.headers['paddle-signature'], 'ts=123;h1=test');
+    assert.equal(seen[0].options.headers['x-chronolab-provider'], 'paddle');
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });

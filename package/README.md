@@ -13,18 +13,18 @@ Unsupported boundaries:
 - Linux glibc images only; musl/Alpine and typical static binaries cannot use the shim
 - Database server expressions such as Postgres `NOW()` remain real when the database is passive
 - External services require explicit provider adapters
-- Backward travel is refused after external side effects; reset cannot roll back Stripe
+- Backward travel is refused after external side effects; reset cannot roll back attached Stripe or Chargebee clocks
 
 ## Install
 
 Requirements: Node.js 20 or newer, Docker, and network access for the first shim build.
 
 ```bash
-npm install --global https://github.com/AceVikings/chronolab/releases/download/v0.2.0/chronolab-0.2.0.tgz
+npm install --global https://github.com/AceVikings/chronolab/releases/download/v0.3.0/chronolab-0.3.0.tgz
 chrono --version
 ```
 
-From a source checkout, run `npm install && npm link` inside `package/`. The package metadata is also ready for a future `npm publish --provenance`; the GitHub release artifact is the supported install source for v0.2.0.
+From a source checkout, run `npm install && npm link` inside `package/`. The package metadata is also ready for a future `npm publish --provenance`; the GitHub release artifact is the supported install source for v0.3.0.
 
 ## Single image workflow
 
@@ -91,6 +91,53 @@ When a clock is attached, `advance` stops controlled applications, advances Stri
 
 Run `chrono stripe listen --forward-to http://localhost:3000/webhooks/stripe --port 4243` to accept webhook payloads on `127.0.0.1`. Point Stripe or `stripe listen` at that local endpoint. Payload bytes and ordering are preserved; ChronoLab metadata is added only as a forwarding header.
 
+## Chargebee test-site Time Machine
+
+Chargebee operations require an explicit test-site name and API key. The key is read from the environment and is never stored in ChronoLab state.
+
+```bash
+export CHARGEBEE_TEST_SITE=my-test-site
+export CHARGEBEE_API_KEY=test_...
+
+# Warning: start-afresh clears customer data on the selected test site.
+chrono chargebee start --at 2026-01-01T00:00:00Z --confirm
+chrono chargebee status
+chrono advance 30d
+chrono chargebee detach
+```
+
+Use `chrono chargebee attach --site my-test-site` when an existing `delorean` Time Machine has already reached `succeeded`. An attached Time Machine advances before local services restart. `chrono reset` is refused while it is attached because ChronoLab cannot roll back provider-side effects.
+
+## Paddle sandbox simulations
+
+Paddle is a lifecycle simulator, not a synchronized provider clock. Only sandbox keys containing `_sdbx_` and the sandbox API endpoint are accepted.
+
+```bash
+export PADDLE_SANDBOX_API_KEY=pdl_sdbx_...
+
+chrono paddle listen \
+  --forward-to http://localhost:3000/webhooks/paddle \
+  --port 4244
+
+chrono paddle simulate subscription_renewal \
+  --notification-setting ntfset_123 \
+  --name monthly-renewal
+
+chrono paddle status
+chrono paddle detach
+```
+
+Supported scenario types are `subscription_creation`, `subscription_renewal`, `subscription_pause`, `subscription_resume`, and `subscription_cancellation`. ChronoLab creates the sandbox simulation, starts a run, polls it with a bounded timeout, includes its events, and reports failed or aborted deliveries as errors. The listener preserves the original body and `paddle-signature` header.
+
+## Provider safety contract
+
+- Provider secrets come from environment variables and are never persisted or printed.
+- Recognizable live credentials and endpoints are rejected before a request is sent.
+- All polling is bounded and failures use stable error codes.
+- Stripe and Chargebee clock travel finishes before local controlled containers restart.
+- Stripe and Paddle webhook bodies, signatures, and ordering are preserved.
+- External side effects are never described as reversible.
+
 ## Agents and diagnostics
 
 Every command supports `--json`. Errors use stable codes.
@@ -119,9 +166,10 @@ By default, ChronoLab builds and caches `chronolab-shim:glibc-<architecture>` fr
 ```bash
 npm test
 npm run test:stripe
+npm run test:providers
 npm pack --dry-run
 ```
 
-The suite covers duration parsing, atomic writes, locking, wrapper rendering, full CLI subprocess lifecycles, Compose controlled/passive behavior, Stripe coordination and safety, webhook ordering, accelerated clocks, export, and MCP stdio.
+The suite covers duration parsing, atomic writes, locking, wrapper rendering, full CLI subprocess lifecycles, Compose controlled/passive behavior, Stripe and Chargebee clock coordination, Paddle simulations, cross-provider webhook ordering, accelerated clocks, export, and MCP stdio.
 
-The focused Stripe suite verifies the Test Clock HTTP contract, test-only credential and object guards, create/retrieve/advance/delete behavior, ready-state polling and timeouts, provider-before-container ordering, sanitized failures, exact webhook signatures and payload bytes, buffering while an advance is active, and ordered release afterward. It uses deterministic local doubles and an ephemeral localhost listener, so CI never needs a Stripe secret.
+The focused provider suite verifies HTTP contracts, sandbox credential guards, lifecycle actions, provider-before-container ordering, bounded polling, sanitized failures, exact webhook signatures and payload bytes, buffering during advancement, and ordered release. It uses deterministic local doubles and an ephemeral localhost listener, so CI never needs provider secrets.

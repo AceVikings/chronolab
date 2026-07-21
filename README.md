@@ -1,3 +1,5 @@
+<p align="center"><img src="./assets/logo-wordmark.svg" alt="ChronoLab" width="310" /></p>
+
 # ChronoLab
 
 Deterministic wall-clock testing for Docker applications.
@@ -18,7 +20,7 @@ The host clock is never changed and ChronoLab never requests `CAP_SYS_TIME`. Mon
 ChronoLab requires Node.js 20+, Docker, and network access for the first architecture-specific shim build. Install the versioned release artifact directly from GitHub:
 
 ```bash
-npm install --global https://github.com/AceVikings/chronolab/releases/download/v0.2.0/chronolab-0.2.0.tgz
+npm install --global https://github.com/AceVikings/chronolab/releases/download/v0.3.0/chronolab-0.3.0.tgz
 chrono --version
 ```
 
@@ -55,13 +57,15 @@ Each directory owns its dependencies and lockfile. The CLI suite lives in `packa
 - Experimental accelerated clocks for running application processes
 - Multiple controlled Docker Compose services with passive dependencies
 - Stripe sandbox Test Clock creation, attachment, status, and coordinated advancement
-- Buffered Stripe webhook forwarding during clock changes
+- Chargebee test-site Time Machine setup, attachment, status, and coordinated advancement
+- Paddle sandbox subscription lifecycle simulations with delivery verification
+- Byte-preserving Stripe and Paddle webhook buffering during clock changes
 - Stable JSON output, structured events, diagnostic export, and MCP tools
 - Compatibility checks, per-run locking, exact resource targeting, and retained diagnostics
 
 See the [CLI guide](./package/README.md) for commands and support boundaries.
 
-See the [provider roadmap](./ROADMAP.md) for the tested Stripe contract and planned Chargebee, Paddle, and Recurly integrations.
+See the [provider roadmap](./ROADMAP.md) for the shipped Stripe, Chargebee, and Paddle contracts and the evidence required for future adapters.
 
 Run the working [Docker Compose demo](./demo) to see two controlled Node.js services share logical time while Redis stays passive.
 

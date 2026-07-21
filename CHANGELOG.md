@@ -2,11 +2,15 @@
 
 All notable changes to ChronoLab are documented here.
 
-## Unreleased
+## 0.3.0 — 2026-07-21
 
+- Add a Chargebee test-site Time Machine adapter with destructive setup confirmation, bounded polling, coordinated advancement, and reset safety.
+- Add Paddle sandbox subscription simulations with run polling, delivery verification, and signature-preserving webhook buffering.
+- Generalize the webhook buffer for provider-specific payload files, signature headers, and metadata.
 - Expand Stripe Test Clock contract, safety, timeout, and webhook listener coverage.
-- Add a focused Stripe test command and CI step.
-- Publish the Chargebee, Paddle, and Recurly provider roadmap on the landing page and in `ROADMAP.md`.
+- Add a focused provider test command and CI step covering Stripe, Chargebee, Paddle, orchestration, and webhook fidelity.
+- Add a reusable SVG logo system, landing-page favicon, public brand guidance, and complete provider documentation.
+- Publish the shipped and researched provider roadmap on the landing page and in `ROADMAP.md`.
 
 ## 0.2.0 — 2026-07-21
 

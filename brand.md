@@ -6,6 +6,10 @@ Status: active
 
 Stark-minimal developer infrastructure with an industrial terminal core. Spacious marketing rhythm surrounds compact, precise command surfaces.
 
+## Mark
+
+The primary mark is a wall-clock ring whose hand resolves into a forward arrow. It represents application realtime under control and deliberate forward advancement. Source assets and usage rules live in [`assets/`](./assets).
+
 ## Palette
 
 - Canvas: warm near-black (`oklch(0.17 0.01 80)`)

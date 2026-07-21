@@ -23,7 +23,8 @@ The skill teaches agents to:
 - wrap and diagnose glibc Linux images without editing application source;
 - keep databases and infrastructure passive by default;
 - use deterministic jumps or accelerated time appropriately;
-- coordinate Stripe sandbox Test Clocks without exposing credentials;
+- coordinate Stripe sandbox Test Clocks and Chargebee test-site Time Machines without exposing credentials;
+- run Paddle sandbox lifecycle simulations and preserve provider webhook signatures;
 - prefer stable JSON output and structured diagnostics;
 - avoid host clock changes, `CAP_SYS_TIME`, broad cleanup, and false rollback claims.
 

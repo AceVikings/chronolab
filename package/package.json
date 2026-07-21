@@ -1,6 +1,6 @@
 {
   "name": "chronolab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A minimal local CLI for deterministic wall-clock testing in Docker containers",
   "keywords": [
     "docker",
@@ -33,6 +33,7 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "test:stripe": "node --test test/stripe.test.js test/webhook.test.js test/core.test.js",
+    "test:providers": "node --test test/stripe.test.js test/chargebee.test.js test/paddle.test.js test/webhook.test.js test/core.test.js",
     "start": "node ./bin/chrono.js"
   },
   "engines": {

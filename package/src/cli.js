@@ -4,11 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Docker } from './docker.js';
+import { ChargebeeTimeMachine } from './chargebee.js';
 import { loadChronoConfig } from './config.js';
 import { addDuration, normalizeTime, parseDuration } from './duration.js';
 import { asChronoError, ChronoError } from './errors.js';
 import { atomicWrite, readJson, withLock, writeJson } from './files.js';
 import { serveMcp } from './mcp.js';
+import { PaddleSimulator } from './paddle.js';
 import { clearActive, createRun, event, loadRun, paths, saveState, writeClock } from './state.js';
 import { StripeTestClocks } from './stripe.js';
 import { listenWebhooks, releaseBuffered } from './webhook.js';
@@ -29,6 +31,8 @@ Usage:
   chrono reset
   chrono destroy
   chrono stripe create|attach|status|detach|delete|listen
+  chrono chargebee start|attach|status|detach
+  chrono paddle simulate|status|listen|detach
   chrono events
   chrono export [--output FILE]
   chrono mcp serve
@@ -156,7 +160,16 @@ async function commandRun(args, docker, root) {
   }
 }
 
-async function mutateClock({ root, docker, target, source, allowBackward = false, stripeFactory = options => new StripeTestClocks(options), fetchImpl = globalThis.fetch }) {
+async function mutateClock({
+  root,
+  docker,
+  target,
+  source,
+  allowBackward = false,
+  stripeFactory = options => new StripeTestClocks(options),
+  chargebeeFactory = options => new ChargebeeTimeMachine(options),
+  fetchImpl = globalThis.fetch,
+}) {
   const run = await loadRun(root);
   return withLock(path.join(run.dir, 'lock'), async () => {
     const previous = run.state.logicalTime;
@@ -176,6 +189,14 @@ async function mutateClock({ root, docker, target, source, allowBackward = false
         stripe.status = clock.status;
         stripe.frozenTime = clock.frozen_time;
         await event(run.dir, 'stripe.ready', { generation, clockId: stripe.clockId });
+      }
+      const chargebee = run.state.providers.chargebee;
+      if (chargebee?.attached) {
+        await event(run.dir, 'chargebee.advancing', { generation, site: chargebee.site, target });
+        const machine = await chargebeeFactory({ site: chargebee.site }).travelForward(target);
+        chargebee.status = machine.time_travel_status;
+        chargebee.destinationTime = machine.destination_time;
+        await event(run.dir, 'chargebee.ready', { generation, site: chargebee.site, destinationTime: machine.destination_time });
       }
       await writeClock(run.dir, target);
       run.state.logicalTime = target;
@@ -198,6 +219,11 @@ async function mutateClock({ root, docker, target, source, allowBackward = false
       if (stripe?.webhook?.forwardTo) {
         const released = await releaseBuffered({ dir: run.dir, runId: run.state.runId, forwardTo: stripe.webhook.forwardTo, fetchImpl });
         if (released) await event(run.dir, 'webhooks.released', { generation, count: released });
+      }
+      const paddle = run.state.providers.paddle;
+      if (paddle?.webhook?.forwardTo) {
+        const released = await releaseBuffered({ dir: run.dir, runId: run.state.runId, provider: 'paddle', signatureHeader: 'paddle-signature', forwardTo: paddle.webhook.forwardTo, fetchImpl });
+        if (released) await event(run.dir, 'paddle.webhooks.released', { generation, count: released });
       }
       await event(run.dir, 'advance.completed', { generation, target });
       return { message: `Advanced ${run.state.runId}: ${previous} → ${target}`, runId: run.state.runId, previous, logicalTime: target, generation, observed };
@@ -410,6 +436,100 @@ async function commandStripe(args, root, dependencies) {
   throw new ChronoError('UNKNOWN_COMMAND', `Unknown stripe command: ${action}`);
 }
 
+async function commandChargebee(args, root, dependencies) {
+  const action = requireValue(args.positionals[0], '`chrono chargebee` requires start, attach, status, or detach.');
+  const run = await loadRun(root, args.options.run);
+  if (action === 'detach') {
+    const site = run.state.providers.chargebee?.site;
+    delete run.state.providers.chargebee;
+    await saveState(run.dir, run.state);
+    await event(run.dir, 'chargebee.detached', { site });
+    return { message: `Detached Chargebee Time Machine ${site || '(none)'}.`, site };
+  }
+  const site = args.options.site || run.state.providers.chargebee?.site || process.env.CHARGEBEE_TEST_SITE;
+  const factory = dependencies.chargebeeFactory || (options => new ChargebeeTimeMachine(options));
+  const client = factory({ site });
+  if (action === 'start') {
+    if (!args.options.confirm) throw new ChronoError('CONFIRMATION_REQUIRED', '`chrono chargebee start` clears customer data in the test site and requires --confirm.');
+    const at = normalizeTime(args.options.at || run.state.logicalTime);
+    const machine = await client.startAfresh(at);
+    run.state.providers.chargebee = { attached: true, site: client.site || site, name: machine.name || 'delorean', status: machine.time_travel_status, genesisTime: machine.genesis_time, destinationTime: machine.destination_time };
+    await saveState(run.dir, run.state);
+    await event(run.dir, 'chargebee.started', { site: client.site || site, at });
+    return { message: `Started and attached Chargebee Time Machine for ${client.site || site}`, site: client.site || site, status: machine.time_travel_status, destinationTime: machine.destination_time };
+  }
+  if (action === 'attach') {
+    const machine = await client.retrieve();
+    if (machine.time_travel_status !== 'succeeded') throw new ChronoError('CHARGEBEE_NOT_READY', `Chargebee Time Machine is ${machine.time_travel_status}; wait for succeeded before attaching.`);
+    run.state.providers.chargebee = { attached: true, site: client.site || site, name: machine.name || 'delorean', status: machine.time_travel_status, genesisTime: machine.genesis_time, destinationTime: machine.destination_time };
+    await saveState(run.dir, run.state);
+    await event(run.dir, 'chargebee.attached', { site: client.site || site });
+    return { message: `Attached Chargebee Time Machine for ${client.site || site}`, site: client.site || site, status: machine.time_travel_status, destinationTime: machine.destination_time };
+  }
+  if (action === 'status') {
+    if (!run.state.providers.chargebee?.attached) throw new ChronoError('CHARGEBEE_NOT_ATTACHED', 'No Chargebee Time Machine is attached to the active run.');
+    const machine = await client.retrieve();
+    Object.assign(run.state.providers.chargebee, { status: machine.time_travel_status, genesisTime: machine.genesis_time, destinationTime: machine.destination_time });
+    await saveState(run.dir, run.state);
+    return { message: `${client.site || site}: ${machine.time_travel_status}`, site: client.site || site, status: machine.time_travel_status, destinationTime: machine.destination_time };
+  }
+  throw new ChronoError('UNKNOWN_COMMAND', `Unknown chargebee command: ${action}`);
+}
+
+async function commandPaddle(args, root, dependencies) {
+  const action = requireValue(args.positionals[0], '`chrono paddle` requires simulate, status, listen, or detach.');
+  const run = await loadRun(root, args.options.run);
+  if (action === 'detach') {
+    const simulationId = run.state.providers.paddle?.simulationId;
+    delete run.state.providers.paddle;
+    await saveState(run.dir, run.state);
+    await event(run.dir, 'paddle.detached', { simulationId });
+    return { message: `Detached Paddle simulation metadata ${simulationId || '(none)'}.`, simulationId };
+  }
+  if (action === 'listen') {
+    const forwardTo = requireValue(args.options['forward-to'], '`chrono paddle listen` requires --forward-to URL.');
+    const port = Number(args.options.port || 4244);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ChronoError('INVALID_ARGUMENT', 'Webhook port must be between 1 and 65535.');
+    run.state.providers.paddle ||= {};
+    run.state.providers.paddle.webhook = { forwardTo, host: '127.0.0.1', port };
+    await saveState(run.dir, run.state);
+    const controller = new AbortController();
+    const server = await listenWebhooks({ run, port, forwardTo, provider: 'paddle', signatureHeader: 'paddle-signature', fetchImpl: dependencies.fetchImpl, signal: controller.signal });
+    process.once('SIGINT', () => controller.abort());
+    process.stderr.write(`ChronoLab Paddle webhook buffer listening on http://127.0.0.1:${port}\n`);
+    await new Promise(resolve => server.once('close', resolve));
+    return { message: 'Webhook listener stopped.' };
+  }
+  const factory = dependencies.paddleFactory || (options => new PaddleSimulator(options));
+  const client = factory();
+  if (action === 'simulate') {
+    const type = requireValue(args.positionals[1] || args.options.type, '`chrono paddle simulate` requires a scenario type.').replace(/-/g, '_');
+    const notificationSettingId = requireValue(args.options['notification-setting'], '`chrono paddle simulate` requires --notification-setting ntfset_...');
+    const result = await client.simulate({
+      notificationSettingId,
+      type,
+      name: args.options.name || `ChronoLab ${run.state.runId} ${type}`,
+      subscriptionId: args.options.subscription,
+      paymentOutcome: args.options['payment-outcome'],
+      dunningAction: args.options['dunning-action'],
+      effectiveFrom: args.options['effective-from'],
+    });
+    run.state.providers.paddle = { ...(run.state.providers.paddle || {}), simulationId: result.simulation.id, runId: result.run.id, type, status: result.run.status, events: (result.run.events || []).map(item => ({ id: item.id, eventType: item.event_type, status: item.status })) };
+    await saveState(run.dir, run.state);
+    await event(run.dir, 'paddle.simulation.completed', { simulationId: result.simulation.id, simulationRunId: result.run.id, type, eventCount: result.run.events?.length || 0 });
+    return { message: `Paddle ${type} simulation completed`, simulationId: result.simulation.id, simulationRunId: result.run.id, status: result.run.status, events: result.run.events || [] };
+  }
+  if (action === 'status') {
+    const simulationId = args.positionals[1] || run.state.providers.paddle?.simulationId;
+    const simulationRunId = args.positionals[2] || run.state.providers.paddle?.runId;
+    const result = await client.retrieveRun(requireValue(simulationId, 'Provide a Paddle simulation ID.'), requireValue(simulationRunId, 'Provide a Paddle simulation run ID.'));
+    run.state.providers.paddle = { ...(run.state.providers.paddle || {}), simulationId, runId: simulationRunId, type: result.type, status: result.status, events: (result.events || []).map(item => ({ id: item.id, eventType: item.event_type, status: item.status })) };
+    await saveState(run.dir, run.state);
+    return { message: `${simulationRunId}: ${result.status}`, simulationId, simulationRunId, status: result.status, events: result.events || [] };
+  }
+  throw new ChronoError('UNKNOWN_COMMAND', `Unknown paddle command: ${action}`);
+}
+
 async function commandEvents(root, runId) {
   const run = await loadRun(root, runId);
   let text = '';
@@ -435,20 +555,22 @@ export async function dispatch(argv, dependencies = {}) {
   const command = argv[0];
   const args = command === 'exec' ? parseExecArgs(argv.slice(1)) : parseArgs(argv.slice(1));
   const root = path.resolve(args.options.root || process.cwd());
-  if (!command || command === 'help' || args.options.help) return { value: { message: HELP }, json: false };
-  if (command === '--version' || args.options.version) return { value: { message: '0.2.0', version: '0.2.0' }, json: args.options.json };
+  if (!command || command === 'help' || command === '--help' || command === '-h' || args.options.help) return { value: { message: HELP }, json: false };
+  if (command === '--version' || args.options.version) return { value: { message: '0.3.0', version: '0.3.0' }, json: args.options.json };
   let value;
   if (command === 'build') value = await commandBuild(args, docker, root);
   else if (command === 'run') value = await commandRun(args, docker, root);
   else if (command === 'compose') value = await commandCompose(args, docker, root);
   else if (command === 'now') { const run = await loadRun(root, args.options.run); const logicalTime = calculatedNow(run.state); value = { message: logicalTime, runId: run.state.runId, logicalTime, generation: run.state.generation, status: run.state.status, mode: run.state.mode, speed: run.state.speed }; }
-  else if (command === 'advance') { const duration = parseDuration(requireValue(args.positionals[0], '`chrono advance` requires a duration.')); const run = await loadRun(root, args.options.run); const current = calculatedNow(run.state); value = await mutateClock({ root, docker, target: addDuration(current, duration), source: args.positionals[0], stripeFactory: dependencies.stripeFactory, fetchImpl: dependencies.fetchImpl }); }
-  else if (command === 'set') value = await mutateClock({ root, docker, target: normalizeTime(requireValue(args.positionals[0], '`chrono set` requires a timestamp.')), source: 'set', stripeFactory: dependencies.stripeFactory, fetchImpl: dependencies.fetchImpl });
+  else if (command === 'advance') { const duration = parseDuration(requireValue(args.positionals[0], '`chrono advance` requires a duration.')); const run = await loadRun(root, args.options.run); const current = calculatedNow(run.state); value = await mutateClock({ root, docker, target: addDuration(current, duration), source: args.positionals[0], stripeFactory: dependencies.stripeFactory, chargebeeFactory: dependencies.chargebeeFactory, fetchImpl: dependencies.fetchImpl }); }
+  else if (command === 'set') value = await mutateClock({ root, docker, target: normalizeTime(requireValue(args.positionals[0], '`chrono set` requires a timestamp.')), source: 'set', stripeFactory: dependencies.stripeFactory, chargebeeFactory: dependencies.chargebeeFactory, fetchImpl: dependencies.fetchImpl });
   else if (command === 'warp') value = await commandWarp(args, docker, root);
   else if (command === 'exec') { const run = await loadRun(root, args.options.run); const service = run.state.services.main || Object.values(run.state.services).find(item => item.control === 'wall-clock'); const execArgs = [...args.positionals, ...args.passthrough]; requireValue(execArgs[0], '`chrono exec` requires a command.'); value = { message: await docker.exec(requireValue(service?.containerId, 'The run has no controlled container.'), execArgs) }; }
   else if (command === 'doctor') value = await commandDoctor(args, docker, root);
-  else if (command === 'reset') { const run = await loadRun(root, args.options.run); if (run.state.providers.stripe?.clockId) throw new ChronoError('RESET_EXTERNAL_SIDE_EFFECTS_REFUSED', 'Reset cannot roll back an attached Stripe Test Clock. Detach it first if a local-only reset is safe.'); value = await mutateClock({ root, docker, target: run.state.lastSuccessfulTime, source: 'reset', allowBackward: true, stripeFactory: dependencies.stripeFactory, fetchImpl: dependencies.fetchImpl }); }
+  else if (command === 'reset') { const run = await loadRun(root, args.options.run); if (run.state.providers.stripe?.clockId || run.state.providers.chargebee?.attached) throw new ChronoError('RESET_EXTERNAL_SIDE_EFFECTS_REFUSED', 'Reset cannot roll back an attached external provider clock. Detach it first if a local-only reset is safe.'); value = await mutateClock({ root, docker, target: run.state.lastSuccessfulTime, source: 'reset', allowBackward: true, stripeFactory: dependencies.stripeFactory, chargebeeFactory: dependencies.chargebeeFactory, fetchImpl: dependencies.fetchImpl }); }
   else if (command === 'stripe') value = await commandStripe(args, root, dependencies);
+  else if (command === 'chargebee') value = await commandChargebee(args, root, dependencies);
+  else if (command === 'paddle') value = await commandPaddle(args, root, dependencies);
   else if (command === 'events') value = await commandEvents(root, args.options.run);
   else if (command === 'export') value = await commandExport(args, root);
   else if (command === 'mcp' && args.positionals[0] === 'serve') {
