@@ -2,6 +2,10 @@
 
 All notable changes to ChronoLab are documented here.
 
+## Unreleased
+
+- Refresh the public identity with a retro-futurist cosmic-indigo, signal-tangerine, cream, and verification-mint color system across the landing page, logo, favicon, and brand guidance.
+
 ## 0.3.0 — 2026-07-21
 
 - Add a Chargebee test-site Time Machine adapter with destructive setup confirmation, bounded polling, coordinated advancement, and reset safety.
