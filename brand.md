@@ -12,12 +12,13 @@ The primary mark is a wall-clock ring whose hand resolves into a forward arrow. 
 
 ## Palette
 
-- Canvas: cosmic indigo (`oklch(0.20 0.065 275)`)
-- Surface: instrument blue (`oklch(0.24 0.07 275)`)
-- Ink: warm cream (`oklch(0.96 0.025 95)`)
-- Muted ink: soft parchment (`oklch(0.76 0.035 90)`)
-- Accent: signal tangerine (`oklch(0.74 0.19 45)`)
-- Success: verification mint (`oklch(0.80 0.14 155)`)
+- Canvas: deep-space indigo (`oklch(0.145 0.05 275)`)
+- Surface: instrument blue (`oklch(0.225 0.075 275)`)
+- Raised surface: illuminated indigo (`oklch(0.29 0.09 275)`)
+- Ink: bright warm cream (`oklch(0.985 0.02 95)`)
+- Muted ink: high-contrast parchment (`oklch(0.84 0.035 90)`)
+- Accent: signal tangerine (`oklch(0.75 0.235 40)`)
+- Success: verification mint (`oklch(0.84 0.16 155)`)
 
 Tangerine represents logical time and primary action. Mint is reserved for verified success. Indigo supplies depth rather than behaving as a second accent; no additional decorative hues compete with the clock signal.
 

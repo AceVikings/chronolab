@@ -3,17 +3,17 @@
 @theme {
   --font-sans: "IBM Plex Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --color-canvas: oklch(0.2 0.065 275);
-  --color-surface: oklch(0.24 0.07 275);
-  --color-surface-raised: oklch(0.285 0.075 275);
-  --color-ink: oklch(0.96 0.025 95);
-  --color-muted: oklch(0.76 0.035 90);
-  --color-faint: oklch(0.58 0.045 275);
-  --color-line: oklch(0.37 0.075 275);
-  --color-accent: oklch(0.74 0.19 45);
-  --color-accent-soft: oklch(0.3 0.09 35);
-  --color-accent-ink: oklch(0.19 0.05 275);
-  --color-success: oklch(0.8 0.14 155);
+  --color-canvas: oklch(0.145 0.05 275);
+  --color-surface: oklch(0.225 0.075 275);
+  --color-surface-raised: oklch(0.29 0.09 275);
+  --color-ink: oklch(0.985 0.02 95);
+  --color-muted: oklch(0.84 0.035 90);
+  --color-faint: oklch(0.66 0.055 275);
+  --color-line: oklch(0.44 0.09 275);
+  --color-accent: oklch(0.75 0.235 40);
+  --color-accent-soft: oklch(0.29 0.12 35);
+  --color-accent-ink: oklch(0.13 0.045 275);
+  --color-success: oklch(0.84 0.16 155);
 }
 
 :root {
