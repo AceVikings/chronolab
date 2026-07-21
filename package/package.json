@@ -1,0 +1,46 @@
+{
+  "name": "chronolab",
+  "version": "0.2.0",
+  "description": "A minimal local CLI for deterministic wall-clock testing in Docker containers",
+  "keywords": [
+    "docker",
+    "testing",
+    "time-travel",
+    "libfaketime",
+    "cli",
+    "stripe",
+    "mcp"
+  ],
+  "homepage": "https://github.com/AceVikings/chronolab#readme",
+  "bugs": {
+    "url": "https://github.com/AceVikings/chronolab/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AceVikings/chronolab.git",
+    "directory": "package"
+  },
+  "type": "module",
+  "bin": {
+    "chrono": "./bin/chrono.js"
+  },
+  "files": [
+    "bin/",
+    "shim/",
+    "src/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "node ./bin/chrono.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "preferGlobal": true,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "license": "MIT"
+}

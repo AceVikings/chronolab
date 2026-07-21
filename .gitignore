@@ -1,0 +1,30 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.tgz
+
+# ChronoLab runtime state
+.chronolab/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and caches
+*.log
+.npm/
+.vite/
+.cache/
+.playwright-cli/
+output/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~

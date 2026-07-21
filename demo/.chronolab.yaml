@@ -1,0 +1,15 @@
+version: 1
+services:
+  api:
+    context: ./api
+    dockerfile: ./api/Dockerfile
+    control: wall-clock
+  worker:
+    context: ./worker
+    dockerfile: ./worker/Dockerfile
+    control: wall-clock
+  redis:
+    control: passive
+advance:
+  strategy: restart
+  order: [api, worker]

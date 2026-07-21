@@ -1,0 +1,4 @@
+interface:
+  display_name: "ChronoLab"
+  short_description: "Control Docker application time without code changes"
+  default_prompt: "Use $chronolab to run this Docker project at a controlled logical time."
