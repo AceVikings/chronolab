@@ -23,6 +23,13 @@ const features = [
   { index: '10', name: 'Scoped safety controls', tag: 'safety', command: 'chrono destroy', description: 'Uses per-run locks and exact Docker labels, never requests CAP_SYS_TIME, retains failure diagnostics, and removes only resources belonging to the selected run.' },
 ]
 
+const integrationRoadmap = [
+  { provider: 'Stripe', status: 'Shipped + tested', state: 'shipped', surface: 'Test Clocks + webhooks', description: 'Sandbox-only clock creation, attachment, polling, coordinated advancement, deletion, and byte-preserving webhook buffering are covered by automated contract and orchestration tests.' },
+  { provider: 'Chargebee', status: 'Next', state: 'planned', surface: 'Time Machine', description: 'Coordinate test-site Time Machine travel, wait for a terminal status, then restart local controlled services and release buffered Chargebee events.' },
+  { provider: 'Paddle', status: 'Planned', state: 'planned', surface: 'Webhook Simulator', description: 'Run sandbox renewal and failed-payment lifecycle simulations through ChronoLab’s ordered webhook path. This will simulate events, not claim to change Paddle’s clock.' },
+  { provider: 'Recurly', status: 'Research', state: 'research', surface: 'Sandbox lifecycle', description: 'Evaluate subscription, invoice, and dunning test surfaces. It ships only if a deterministic provider contract can be proven and tested.' },
+]
+
 function CopyButton({ value, label = 'Copy command' }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false)
 
@@ -185,6 +192,30 @@ function App() {
               <strong>Deliberate boundaries</strong>
               <p>ChronoLab targets dynamically linked glibc Linux processes. Static binaries, Alpine/musl, passive database expressions, and arbitrary external SaaS clocks are reported as boundaries—not silently simulated.</p>
             </div>
+          </div>
+        </section>
+
+        <section className="integration-section" aria-labelledby="integration-heading">
+          <div className="page-shell">
+            <div className="integration-heading">
+              <div>
+                <div className="eyebrow">Provider integrations</div>
+                <h2 id="integration-heading">One release gate.<br />No pretend clocks.</h2>
+              </div>
+              <p>Providers are marked shipped only after sandbox guards, bounded polling, sanitized failures, ordering, and webhook fidelity are covered by tests. Planned work stays visibly separate.</p>
+            </div>
+            <div className="integration-ledger">
+              <div className="integration-labels" aria-hidden="true"><span>Provider</span><span>Status</span><span>Capability</span><span>Contract</span></div>
+              {integrationRoadmap.map((integration) => (
+                <article className="integration-row" key={integration.provider}>
+                  <h3>{integration.provider}</h3>
+                  <div className="integration-status" data-state={integration.state}><span />{integration.status}</div>
+                  <code>{integration.surface}</code>
+                  <p>{integration.description}</p>
+                </article>
+              ))}
+            </div>
+            <a className="roadmap-link" href={`${repository}/blob/main/ROADMAP.md`} target="_blank" rel="noreferrer">Read the provider acceptance plan <ArrowRight aria-hidden="true" size={15} /></a>
           </div>
         </section>
 

@@ -118,7 +118,10 @@ By default, ChronoLab builds and caches `chronolab-shim:glibc-<architecture>` fr
 
 ```bash
 npm test
+npm run test:stripe
 npm pack --dry-run
 ```
 
 The suite covers duration parsing, atomic writes, locking, wrapper rendering, full CLI subprocess lifecycles, Compose controlled/passive behavior, Stripe coordination and safety, webhook ordering, accelerated clocks, export, and MCP stdio.
+
+The focused Stripe suite verifies the Test Clock HTTP contract, test-only credential and object guards, create/retrieve/advance/delete behavior, ready-state polling and timeouts, provider-before-container ordering, sanitized failures, exact webhook signatures and payload bytes, buffering while an advance is active, and ordered release afterward. It uses deterministic local doubles and an ephemeral localhost listener, so CI never needs a Stripe secret.

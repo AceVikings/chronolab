@@ -23,6 +23,7 @@ jobs:
           cache-dependency-path: package/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: npm run test:stripe
       - run: npm pack --dry-run
 
   frontend:

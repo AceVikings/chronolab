@@ -2,6 +2,12 @@
 
 All notable changes to ChronoLab are documented here.
 
+## Unreleased
+
+- Expand Stripe Test Clock contract, safety, timeout, and webhook listener coverage.
+- Add a focused Stripe test command and CI step.
+- Publish the Chargebee, Paddle, and Recurly provider roadmap on the landing page and in `ROADMAP.md`.
+
 ## 0.2.0 — 2026-07-21
 
 Initial public release.

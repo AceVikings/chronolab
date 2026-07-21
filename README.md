@@ -61,6 +61,8 @@ Each directory owns its dependencies and lockfile. The CLI suite lives in `packa
 
 See the [CLI guide](./package/README.md) for commands and support boundaries.
 
+See the [provider roadmap](./ROADMAP.md) for the tested Stripe contract and planned Chargebee, Paddle, and Recurly integrations.
+
 Run the working [Docker Compose demo](./demo) to see two controlled Node.js services share logical time while Redis stays passive.
 
 ## Project policies

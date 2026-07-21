@@ -30,3 +30,38 @@ test('refuses live Stripe keys and sanitizes API errors', async () => {
   const stripe = new StripeTestClocks({ key: 'sk_test_example', fetchImpl: async () => response({ error: { message: 'invalid clock', type: 'invalid_request_error' } }, 400) });
   await assert.rejects(stripe.retrieve('clock_bad'), error => error.code === 'STRIPE_API_ERROR' && !error.message.includes('sk_test_example'));
 });
+
+test('retrieves and deletes encoded sandbox clock IDs with the expected API contract', async () => {
+  const calls = [];
+  const stripe = new StripeTestClocks({
+    key: 'sk_test_example',
+    baseUrl: 'https://stripe.test/v1',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return response(url.endsWith('/clock_123') && options.method === 'DELETE'
+        ? { id: 'clock_123', object: 'test_helpers.test_clock', deleted: true, livemode: false }
+        : { id: 'clock_123', object: 'test_helpers.test_clock', status: 'ready', livemode: false });
+    },
+  });
+
+  await stripe.retrieve('clock_123');
+  const deleted = await stripe.delete('clock_123');
+
+  assert.equal(deleted.deleted, true);
+  assert.deepEqual(calls.map(call => call.options.method), ['GET', 'DELETE']);
+  assert.ok(calls.every(call => call.url === 'https://stripe.test/v1/test_helpers/test_clocks/clock_123'));
+  assert.ok(calls.every(call => call.options.headers.Authorization === 'Bearer sk_test_example'));
+});
+
+test('refuses live-mode objects and reports a stable timeout while polling', async () => {
+  const liveObject = new StripeTestClocks({ key: 'sk_test_example', fetchImpl: async () => response({ id: 'clock_live', livemode: true }) });
+  await assert.rejects(liveObject.retrieve('clock_live'), error => error.code === 'STRIPE_LIVE_MODE_REFUSED');
+
+  const stalled = new StripeTestClocks({
+    key: 'sk_test_example',
+    pollMs: 0,
+    timeoutMs: 1,
+    fetchImpl: async (_url, options) => response({ id: 'clock_slow', livemode: false, status: options.method === 'POST' ? 'advancing' : 'advancing' }),
+  });
+  await assert.rejects(stalled.advance('clock_slow', '2026-02-01T00:00:00Z'), error => error.code === 'STRIPE_TIMEOUT');
+});
