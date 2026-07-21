@@ -4,6 +4,7 @@ The mark combines a wall clock with a forward arrow: the clock represents contro
 
 - `logo-mark.svg` — primary square mark for avatars, favicons, and compact navigation
 - `logo-wordmark.svg` — horizontal mark for repository and marketing headers
+- `chronolab-wordmark.png` — transparent 1240×256 PNG export for profiles, documents, and social graphics
 - `logo-mask.svg` — monochrome Safari pinned-tab mask
 
 Keep clear space equal to one quarter of the mark width. Do not recolor the arrow separately from the tangerine clock ring, add gradients, rotate the mark, or place it directly on a low-contrast indigo surface without its containing square.
