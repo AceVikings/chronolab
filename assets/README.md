@@ -3,6 +3,7 @@
 The mark combines a wall clock with a forward arrow: the clock represents controlled realtime, while the arrow represents deterministic advancement. Its geometry remains legible at favicon size and uses only ChronoLab's documented cosmic-indigo, cream, and signal-tangerine tokens.
 
 - `logo-mark.svg` — primary square mark for avatars, favicons, and compact navigation
+- `chronolab-icon.png` — transparent 512×512 PNG export of the standalone favicon mark
 - `logo-wordmark.svg` — horizontal mark for repository and marketing headers
 - `chronolab-wordmark.png` — transparent 1240×256 PNG export for profiles, documents, and social graphics
 - `logo-mask.svg` — monochrome Safari pinned-tab mask
