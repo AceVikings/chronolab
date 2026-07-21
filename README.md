@@ -65,6 +65,50 @@ See the [provider roadmap](./ROADMAP.md) for the tested Stripe contract and plan
 
 Run the working [Docker Compose demo](./demo) to see two controlled Node.js services share logical time while Redis stays passive.
 
+## About the project
+
+### Why we built it
+
+Time-dependent features are awkward to test. A subscription renewal may be thirty days away. A trial-expiry bug might only appear at midnight. Scheduled jobs, dunning flows, and month-end logic all depend on a clock that developers usually cannot move safely.
+
+The usual options are not great: wait, change the host clock, or thread a mock-clock abstraction through application code. ChronoLab started with a more practical question: what if time could be ordinary test data?
+
+The goal was to take an existing Docker application, start it on a chosen date, move it forward by days or months, and leave the application itself alone.
+
+### How it works
+
+ChronoLab wraps the final Linux image with an architecture-compatible `libfaketime` shim. The shim intercepts realtime calls below the application layer, so familiar APIs such as `Date.now()`, `new Date()`, `time.time()`, and `Time.now` see the configured clock without an SDK or source edit.
+
+Clock state lives in an inspectable `.chronolab/` directory. During a time jump, ChronoLab locks the run, stops only controlled application containers, advances attached sandbox providers, writes the new clock generation, restarts services in order, and checks the timestamp observed by every process. Volumes and writable container layers survive the restart.
+
+The CLI is dependency-free JavaScript. The documentation site uses React, TypeScript, Vite, and Tailwind CSS. A working Compose demo exercises two controlled Node.js services alongside passive Redis.
+
+### What we learned
+
+Changing a timestamp was the easy part. The real work was deciding which clocks should move and how to keep several systems consistent while they do.
+
+Wall-clock time and monotonic time cannot be treated as the same thing. ChronoLab controls realtime but leaves monotonic clocks alone, which keeps event loops, locks, networking, and timeouts behaving normally. A clock jump also cannot wake a process that is already blocked, so controlled containers restart after deterministic jumps.
+
+External providers add another ordering problem. If local services restart before a billing provider finishes advancing, the test can observe two different dates. ChronoLab waits for the provider first and buffers incoming webhook bytes until the local applications are ready again.
+
+### Challenges
+
+Container compatibility needed clear boundaries. `LD_PRELOAD` works for dynamically linked glibc applications, but not typical static binaries or musl-based images. ChronoLab reports those cases instead of pretending they work.
+
+Safe cleanup mattered too. The CLI uses exact run labels and per-run state rather than broad Docker commands. It never changes the host clock or requests `CAP_SYS_TIME`. Provider integrations accept sandbox credentials only, avoid persisting secrets, and return stable error codes that agents and CI jobs can handle.
+
+Testing accelerated time uncovered a subtle distinction between asking a newly started utility for the time and observing the long-running application process. The final tests check the application itself, including real timer ticks, persisted volumes, provider ordering, and webhook delivery.
+
+### How Codex and GPT-5.6 were used
+
+Codex powered by GPT-5.6 was used throughout development as a hands-on engineering collaborator. It helped turn the initial product plan into the CLI architecture, implement the Docker and provider workflows, write tests, run the real Compose demo, diagnose clock behavior, and build the landing page.
+
+The model also helped pressure-test decisions rather than simply generate code. It traced failures through container logs, caught the difference between wall-clock and monotonic behavior, expanded Stripe safety tests, reviewed public-package metadata, and checked the site in a real browser at desktop and mobile sizes. Human direction set the product scope and safety rules; every shipped path was then verified with executable tests or a live local demo.
+
+### Repository
+
+Source code, documentation, examples, and releases are available at [github.com/AceVikings/chronolab](https://github.com/AceVikings/chronolab).
+
 ## Project policies
 
 ChronoLab is available under the [MIT License](./LICENSE). Contributions are welcome; read [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) before participating.
